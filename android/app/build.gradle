@@ -1,0 +1,108 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
+if (flutterVersionCode == null) {
+    flutterVersionCode = "1"
+}
+
+def flutterVersionName = localProperties.getProperty("flutter.versionName")
+if (flutterVersionName == null) {
+    flutterVersionName = "1.0"
+}
+
+android {
+    namespace = "com.lodgezify.app"
+    compileSdk = 35  // Updated to API level 35
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreProperties['storeFile']) {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId = "com.lodgezify.app"
+        minSdk = flutter.minSdkVersion
+        targetSdk = 35  // Updated to API level 35
+        versionCode = flutterVersionCode.toInteger()
+        versionName = flutterVersionName
+        
+        // Enable multiDex for smaller APK
+        multiDexEnabled true
+    }
+
+    buildTypes {
+        release {
+            // Minimal optimization to prevent crashes
+            minifyEnabled false
+            shrinkResources false
+            
+            // Use release signing if keystore exists, otherwise fallback to debug
+            if (keystoreProperties['storeFile'] && file(keystoreProperties['storeFile']).exists()) {
+                signingConfig = signingConfigs.release
+            } else {
+                signingConfig = signingConfigs.debug
+            }
+            
+            // Basic optimization only
+            debuggable false
+            jniDebuggable false
+            renderscriptDebuggable false
+            zipAlignEnabled true
+        }
+        
+        debug {
+            minifyEnabled false
+            shrinkResources false
+            debuggable true
+        }
+    }
+    
+    // Enable splits for smaller APK (commented out for now)
+    // splits {
+    //     abi {
+    //         enable true
+    //         reset()
+    //         include "arm64-v8a", "armeabi-v7a"
+    //         universalApk true
+    //     }
+    // }
+}
+
+flutter {
+    source = "../.."
+}

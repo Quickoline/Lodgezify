@@ -1,0 +1,90 @@
+name: iOS Build and Release
+
+on:
+  push:
+    branches: [ main, master, release ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
+        
+    - name: Install dependencies
+      run: |
+        cd my_flutter_app
+        flutter pub get
+      
+    - name: Run Flutter analyze
+      run: |
+        cd my_flutter_app
+        flutter analyze
+      
+    - name: Run Flutter test
+      run: |
+        cd my_flutter_app
+        flutter test
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+        
+    - name: Install CocoaPods
+      run: |
+        cd my_flutter_app/ios
+        pod install
+        
+    - name: Build iOS app
+      run: |
+        cd my_flutter_app
+        flutter build ios --release --no-codesign
+        
+    - name: Create Archive
+      run: |
+        cd my_flutter_app/ios
+        xcodebuild -workspace Runner.xcworkspace \
+          -scheme Runner \
+          -configuration Release \
+          -destination generic/platform=iOS \
+          -archivePath Runner.xcarchive \
+          archive
+          
+    - name: Export IPA
+      run: |
+        cd my_flutter_app
+        xcodebuild -exportArchive \
+          -archivePath ios/Runner.xcarchive \
+          -exportPath ios/build \
+          -exportOptionsPlist ios/ExportOptions.plist
+          
+    - name: Upload IPA artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: lodgezify-ios-v1.0.0
+        path: my_flutter_app/ios/build/*.ipa
+        retention-days: 30
+        
+    - name: Upload build logs
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: build-logs
+        path: |
+          my_flutter_app/ios/Runner.xcarchive
+          /tmp/xcodebuild_logs/*.log
+        retention-days: 7
